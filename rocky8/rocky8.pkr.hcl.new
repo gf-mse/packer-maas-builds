@@ -1,0 +1,69 @@
+packer {
+  required_version = ">= 1.7.0"
+  required_plugins {
+    qemu = {
+      version = "~> 1.0"
+      source  = "github.com/hashicorp/qemu"
+    }
+  }
+}
+
+variable "filename" {
+  type        = string
+  default     = "rocky8.tar.gz"
+  description = "The filename of the tarball to produce"
+}
+
+variable "rocky_iso_url" {
+  type    = string
+  default = "http://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-x86_64-boot.iso"
+}
+
+variable "rocky_sha256sum_url" {
+  type    = string
+  default = "http://download.rockylinux.org/pub/rocky/8/isos/x86_64/CHECKSUM"
+}
+
+source "qemu" "rocky8" {
+  accelerator      = "kvm"
+  memory           = 2048
+  disk_size        = "4G"
+  iso_url          = var.rocky_iso_url
+  iso_checksum     = "file:${var.rocky_sha256sum_url}"
+  http_directory   = "http"
+  headless         = true
+##  boot_command     = ["<up><tab> ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
+
+  boot_command     = ["<up><tab> ", "inst.text ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
+##  boot_wait        = "3s"
+  boot_wait        = "20s"
+  communicator     = "none"
+##  qemuargs         = [["-serial", "stdio"]]
+  qemuargs         = [["-serial", "telnet:localhost:4321,server,nowait"],
+                      ["-cpu", "host"],
+                      ["-nographic"],
+                      ["-monitor", "telnet:localhost:4322,server,nowait"],
+#                      ["-nic", "user,hostfwd=tcp::2222-:22"]
+                     ]
+
+#  vnc_port_min = 5903
+#  vnc_port_max = 5903
+
+  shutdown_timeout = "1h"
+}
+
+build {
+  sources = ["source.qemu.rocky8"]
+
+  post-processor "shell-local" {
+    inline = [
+      "SOURCE=rocky8",
+      "OUTPUT=${var.filename}",
+      "source ../scripts/fuse-nbd",
+      "source ../scripts/fuse-tar-root"
+    ]
+    inline_shebang = "/bin/bash -e"
+  }
+}
+
+# --------------------------------
