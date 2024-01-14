@@ -1,0 +1,11 @@
+
+export PACKER_LOG=1
+export PACKER_LOG_PATH="packer.build."`date +%F-t-%s`".log"
+
+rm -rf ./output-cloudimg
+
+packer init .
+packer build -var customize_script=test-changes.sh -var ubuntu_series=jammy -only='cloudimg.*' .
+
+# // builds but untested
+
