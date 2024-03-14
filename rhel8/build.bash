@@ -7,6 +7,7 @@ export PACKER_LOG=1
 export PACKER_LOG_PATH="packer.build."`date +%F-t-%s`".log"
 
 export KS_PROXY=''
+export KS_APPSTREAM_REPOS='--baseurl="file:///run/install/repo/AppStream"'
 
 export WORKDIR='./output-rhel8'
 export KSFILE='rhel8.ks'
@@ -38,7 +39,8 @@ done
 
 rm -rf "${WORKDIR}"
 
-( cd http && envsubst < "${KSFILE}.in" > "${KSFILE}" )
+## ( cd http && envsubst < "${KSFILE}.in" > "${KSFILE}" )
+( cd http && envsubst < "${KSFILE}.pkrtpl.hcl" > "${KSFILE}" )
 
 packer init .
 packer build -var "rhel8_iso_path=${ISO_IMAGE}" .
