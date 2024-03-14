@@ -19,44 +19,65 @@ variable "rhel8_iso_path" {
   default = "${env("RHEL8_ISO_PATH")}"
 }
 
-source "qemu" "rhel8" {
-  accelerator      = "kvm"
-  memory           = 2048
-  disk_size        = "4G"
-  headless         = true
-  iso_url          = var.rhel8_iso_path
-  iso_checksum     = "none"
-##  boot_command     = ["<up><tab> ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
+# (1) >>> added 'ks_appstream_repos' and 'ks_proxy' variables >>>
 
-  boot_command     = ["<up><tab> ", "inst.text ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
-##  boot_wait        = "3s"
-  boot_wait        = "20s"
-  http_directory   = "http"
-  communicator     = "none"
-##  qemuargs         = [["-serial", "stdio"], ["-cpu", "host"]]
-  qemuargs         = [["-serial", "telnet:localhost:4321,server,nowait"],
-                      ["-cpu", "host"],
-                      ["-nographic"],
-                      ["-monitor", "telnet:localhost:4322,server,nowait"],
-#                      ["-nic", "user,hostfwd=tcp::2222-:22"]
-                     ]
-
-#  vnc_port_min = 5908
-#  vnc_port_max = 5908
-
-  shutdown_timeout = "1h"
+# Use --baseurl to specify the exact url for AppStream repo
+variable "ks_appstream_repos" {
+  type    = string
+  default = "--baseurl='file:///run/install/repo/AppStream'"
 }
 
+variable ks_proxy {
+  type    = string
+  default = "${env("KS_PROXY")}"
+}
+
+locals {
+  ks_proxy = var.ks_proxy != "" ? "--proxy=${var.ks_proxy}" : ""
+}
+
+# <<<
+
+source "qemu" "rhel8" {
+  boot_command     = ["<up><tab> ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
+  boot_wait        = "3s"
+  communicator     = "none"
+  disk_size        = "4G"
+  headless         = true
+  iso_checksum     = "none"
+  iso_url          = var.rhel8_iso_path
+  memory           = 2048
+  qemuargs         = [["-serial", "stdio"], ["-cpu", "host"]]
+  shutdown_timeout = "1h"
+# (2) >>> switching from 'http_directory' to directly setting 'http_content' using the variables set earlier
+# ## http_directory   = "http"
+  http_content = {
+#   # // the only difference in the .ks file is 
+#   # //   'repo --name="AppStream" --baseurl="file:///run/install/repo/AppStream"' =>
+#   # //   'repo --name="AppStream" ${KS_APPSTREAM_REPOS} ${KS_PROXY}'
+#   # // also now using templatefile() instead of Makefile / envsubst )
+    "/rhel8.ks" = templatefile("${path.root}/http/rhel8.ks.pkrtpl.hcl",
+      {
+        KS_PROXY           = local.ks_proxy,
+        KS_APPSTREAM_REPOS = var.ks_appstream_repos,
+      }
+    )
+  }
+
+}
 
 build {
   sources = ["source.qemu.rhel8"]
 
   post-processor "shell-local" {
     inline = [
-      "SOURCE=rhel8",
+##    "SOURCE=rhel8",      
+      "SOURCE=${source.name}",
       "OUTPUT=${var.filename}",
       "source ../scripts/fuse-nbd",
-      "source ../scripts/fuse-tar-root"
+      "source ../scripts/fuse-tar-root",
+#     # // (3) >>> added this command (which we earlier had in the shell wrapper)
+      "rm -rf output-${source.name}",
     ]
     inline_shebang = "/bin/bash -e"
   }
