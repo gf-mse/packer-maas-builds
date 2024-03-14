@@ -31,6 +31,9 @@ for f in resolv.conf fstab; do
     chmod 644 /etc/$f
 done
 
+# // fix /etc perms
+chmod a+x /etc
+
 rm -f /etc/sysconfig/network-scripts/ifcfg-[^lo]*
 
 # Kickstart copies install boot options. Serial is turned on for logging with
@@ -51,6 +54,10 @@ cloud-init
 # cloud-init only requires python3-oauthlib with MAAS. As such upstream
 # removed this dependency.
 python3-oauthlib
+# >>> likewise, the target image seems to have no python2/python3 binaries ..
+python2
+python3
+# <<< .. which we may need for Ansible configuration
 rsync
 tar
 # grub2-efi-x64 ships grub signed for UEFI secure boot. If grub2-efi-x64-modules
