@@ -1,5 +1,6 @@
-url --url="https://yum.oracle.com/repo/OracleLinux/OL8/baseos/latest/x86_64" ${KS_PROXY}
+url ${KS_OS_REPOS} ${KS_PROXY}
 poweroff
+firewall --enabled --service=ssh
 firstboot --disable
 ignoredisk --only-use=vda
 lang en_US.UTF-8
@@ -7,11 +8,12 @@ keyboard us
 network --device eth0 --bootproto=dhcp
 firewall --enabled --service=ssh
 selinux --enforcing
-timezone UTC --utc
+timezone UTC --isUtc
 bootloader --location=mbr --driveorder="vda" --timeout=1
 rootpw --plaintext password
 
-repo --name="ol8_AppStream" --baseurl="https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/" ${KS_PROXY}
+repo --name="Updates" ${KS_UPDATES_REPOS} ${KS_PROXY}
+repo --name="Extras" ${KS_EXTRAS_REPOS} ${KS_PROXY}
 
 zerombr
 clearpart --all --initlabel
@@ -38,32 +40,42 @@ rm -f /etc/sysconfig/network-scripts/ifcfg-[^lo]*
 sed -i 's/^GRUB_TERMINAL=.*/GRUB_TERMINAL_OUTPUT="console"/g' /etc/default/grub
 sed -i '/GRUB_SERIAL_COMMAND="serial"/d' /etc/default/grub
 sed -ri 's/(GRUB_CMDLINE_LINUX=".*)\s+console=ttyS0(.*")/\1\2/' /etc/default/grub
-sed -i 's/"GRUB_ENABLE_BLSCFG=.*"/"GRUB_ENABLE_BLSCFG=false"/g' /etc/default/grub
+sed -i 's/GRUB_ENABLE_BLSCFG=.*/GRUB_ENABLE_BLSCFG=false/g' /etc/default/grub
 
-dnf clean all
+yum clean all
 %end
 
 %packages
 @core
 bash-completion
 cloud-init
-# cloud-init only requires python3-oauthlib with MAAS. As such upstream
-# removed this dependency.
-python3-oauthlib
+# cloud-init only requires python-oauthlib with MAAS. As such upstream
+# has removed python-oauthlib from cloud-init's deps.
+python2-oauthlib
+cloud-utils-growpart
 rsync
 tar
-# grub2-efi-x64 ships grub signed for UEFI secure boot. If grub2-efi-x64-modules
-# is installed grub will be generated on deployment and unsigned which breaks
-# UEFI secure boot.
+yum-utils
+# bridge-utils is required by cloud-init to configure networking. Without it
+# installed cloud-init will try to install it itself which will not work in
+# isolated environments.
+bridge-utils
+# Tools needed to allow custom storage to be deployed without acessing the
+# Internet.
 grub2-efi-x64
-efibootmgr
 shim-x64
+# Older versions of Curtin do not support secure boot and setup grub by
+# generating grubx64.efi with grub2-efi-x64-modules.
+grub2-efi-x64-modules
+efibootmgr
 dosfstools
 lvm2
 mdadm
 device-mapper-multipath
 iscsi-initiator-utils
 -plymouth
+# Remove ALSA firmware
+-a*-firmware
 # Remove Intel wireless firmware
 -i*-firmware
 %end

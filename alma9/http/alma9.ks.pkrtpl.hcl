@@ -1,23 +1,47 @@
 url ${KS_OS_REPOS} ${KS_PROXY}
+repo --name="AppStream" ${KS_APPSTREAM_REPOS} ${KS_PROXY}
+repo --name="Extras" ${KS_EXTRAS_REPOS} ${KS_PROXY}
+
+eula --agreed
+
+# Turn off after installation
 poweroff
-firewall --enabled --service=ssh
+
+# Do not start the Inital Setup app
 firstboot --disable
-ignoredisk --only-use=vda
+
+# System language, keyboard and timezone
 lang en_US.UTF-8
 keyboard us
+timezone UTC --utc
+
+# Set the first NIC to acquire IPv4 address via DHCP
 network --device eth0 --bootproto=dhcp
+# Enable firewal, let SSH through
 firewall --enabled --service=ssh
+# Enable SELinux with default enforcing policy
 selinux --enforcing
-timezone UTC --isUtc
+
+# Do not set up XX Window System
+skipx
+
+# Initial disk setup
+# Use the first paravirtualized disk
+ignoredisk --only-use=vda
+# Place the bootloader on the Master Boot Record
 bootloader --location=mbr --driveorder="vda" --timeout=1
+# Wipe invalid partition tables
+zerombr
+# Erase all partitions and assign default labels
+clearpart --all --initlabel
+# Initialize the primary root partition with ext4 filesystem
+part / --size=1 --grow --asprimary --fstype=ext4
+
+# Set root password
 rootpw --plaintext password
 
-repo --name="Updates" ${KS_UPDATES_REPOS} ${KS_PROXY}
-repo --name="Extras" ${KS_EXTRA_REPOS} ${KS_PROXY}
-
-zerombr
-clearpart --all --initlabel
-part / --size=1 --grow --asprimary --fstype=ext4
+# Add a user named packer
+user --groups=wheel --name=alma --password=alma --plaintext --gecos="alma"
 
 %post --erroronfail
 # workaround anaconda requirements and clear root password
@@ -43,29 +67,37 @@ sed -ri 's/(GRUB_CMDLINE_LINUX=".*)\s+console=ttyS0(.*")/\1\2/' /etc/default/gru
 sed -i 's/GRUB_ENABLE_BLSCFG=.*/GRUB_ENABLE_BLSCFG=false/g' /etc/default/grub
 
 yum clean all
+
+# Passwordless sudo for the user 'alma'
+echo "alma ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/alma
+chmod 440 /etc/sudoers.d/alma
+
+#---- Optional - Install your SSH key ----
+# mkdir -m0700 /home/alma/.ssh/
+#
+# cat <<EOF >/home/alma/.ssh/authorized_keys
+# ssh-rsa <your_public_key_here> you@your.domain
+# EOF
+#
+### set permissions
+# chmod 0600 /home/alma/.ssh/authorized_keys
+#
+#### fix up selinux context
+# restorecon -R /home/alma/.ssh/
+
 %end
 
 %packages
-@core
+@Core
 bash-completion
 cloud-init
-# cloud-init only requires python-oauthlib with MAAS. As such upstream
-# has removed python-oauthlib from cloud-init's deps.
-python2-oauthlib
 cloud-utils-growpart
 rsync
 tar
+patch
 yum-utils
-# bridge-utils is required by cloud-init to configure networking. Without it
-# installed cloud-init will try to install it itself which will not work in
-# isolated environments.
-bridge-utils
-# Tools needed to allow custom storage to be deployed without acessing the
-# Internet.
 grub2-efi-x64
 shim-x64
-# Older versions of Curtin do not support secure boot and setup grub by
-# generating grubx64.efi with grub2-efi-x64-modules.
 grub2-efi-x64-modules
 efibootmgr
 dosfstools

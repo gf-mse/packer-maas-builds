@@ -1,7 +1,6 @@
-url --url="https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/" ${KS_PROXY}
-url --mirrorlist="http://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=BaseOS-9" ${KS_PROXY}
-repo --name="AppStream" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&release=9&repo=AppStream-9" ${KS_PROXY}
-repo --name="Extras" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=extras-9" ${KS_PROXY}
+url ${KS_OS_REPOS} ${KS_PROXY}
+repo --name="AppStream" ${KS_APPSTREAM_REPOS} ${KS_PROXY}
+repo --name="Extras" ${KS_EXTRAS_REPOS} ${KS_PROXY}
 
 eula --agreed
 
@@ -14,7 +13,7 @@ firstboot --disable
 # System language, keyboard and timezone
 lang en_US.UTF-8
 keyboard us
-timezone UTC --utc
+timezone UTC --isUtc
 
 # Set the first NIC to acquire IPv4 address via DHCP
 network --device eth0 --bootproto=dhcp
@@ -65,7 +64,7 @@ rm -f /etc/sysconfig/network-scripts/ifcfg-[^lo]*
 sed -i 's/^GRUB_TERMINAL=.*/GRUB_TERMINAL_OUTPUT="console"/g' /etc/default/grub
 sed -i '/GRUB_SERIAL_COMMAND="serial"/d' /etc/default/grub
 sed -ri 's/(GRUB_CMDLINE_LINUX=".*)\s+console=ttyS0(.*")/\1\2/' /etc/default/grub
-sed -i 's/"GRUB_ENABLE_BLSCFG=.*"/"GRUB_ENABLE_BLSCFG=false"/g' /etc/default/grub 
+sed -i 's/GRUB_ENABLE_BLSCFG=.*/GRUB_ENABLE_BLSCFG=false/g' /etc/default/grub 
 
 yum clean all
 

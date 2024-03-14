@@ -9,12 +9,12 @@ export PACKER_LOG
 
 .PHONY: all clean
 
-all: rocky8.tar.gz
+all: alma9.tar.gz
 
 $(eval $(call check_packages_deps))
 
-rocky8.tar.gz: check-deps clean
-	${PACKER} init rocky8.pkr.hcl && ${PACKER} build rocky8.pkr.hcl
+alma9.tar.gz: check-deps clean
+	${PACKER} init alma9.pkr.hcl && ${PACKER} build alma9.pkr.hcl
 
 clean:
-	${RM} -rf output-rocky8 rocky8.tar.gz
+	${RM} -rf output-alma9 alma9.tar.gz

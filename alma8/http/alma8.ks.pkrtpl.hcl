@@ -1,7 +1,6 @@
-url --url="https://download.rockylinux.org/pub/rocky/8/BaseOS/x86_64/os/" ${KS_PROXY}
-url --mirrorlist="http://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=BaseOS-8" ${KS_PROXY}
-repo --name="AppStream" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?release=8&arch=x86_64&repo=AppStream-8" ${KS_PROXY}
-repo --name="Extras" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=extras-8" ${KS_PROXY}
+url ${KS_OS_REPOS} ${KS_PROXY}
+repo --name="AppStream" ${KS_APPSTREAM_REPOS} ${KS_PROXY}
+repo --name="Extras" ${KS_EXTRAS_REPOS} ${KS_PROXY}
 
 eula --agreed
 
@@ -42,7 +41,7 @@ part / --size=1 --grow --asprimary --fstype=ext4
 rootpw --plaintext password
 
 # Add a user named packer
-user --groups=wheel --name=rocky --password=rocky --plaintext --gecos="rocky"
+user --groups=wheel --name=alma --password=alma --plaintext --gecos="alma"
 
 %post --erroronfail
 # workaround anaconda requirements and clear root password
@@ -65,26 +64,26 @@ rm -f /etc/sysconfig/network-scripts/ifcfg-[^lo]*
 sed -i 's/^GRUB_TERMINAL=.*/GRUB_TERMINAL_OUTPUT="console"/g' /etc/default/grub
 sed -i '/GRUB_SERIAL_COMMAND="serial"/d' /etc/default/grub
 sed -ri 's/(GRUB_CMDLINE_LINUX=".*)\s+console=ttyS0(.*")/\1\2/' /etc/default/grub
-sed -i 's/"GRUB_ENABLE_BLSCFG=.*"/"GRUB_ENABLE_BLSCFG=false"/g' /etc/default/grub 
+sed -i 's/GRUB_ENABLE_BLSCFG=.*/GRUB_ENABLE_BLSCFG=false/g' /etc/default/grub
 
 yum clean all
 
-# Passwordless sudo for the user 'rocky'
-echo "rocky ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/rocky
-chmod 440 /etc/sudoers.d/rocky
+# Passwordless sudo for the user 'alma'
+echo "alma ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/alma
+chmod 440 /etc/sudoers.d/alma
 
 #---- Optional - Install your SSH key ----
-# mkdir -m0700 /home/rocky/.ssh/
+# mkdir -m0700 /home/alma/.ssh/
 #
-# cat <<EOF >/home/rocky/.ssh/authorized_keys
+# cat <<EOF >/home/alma/.ssh/authorized_keys
 # ssh-rsa <your_public_key_here> you@your.domain
 # EOF
 #
 ### set permissions
-# chmod 0600 /home/rocky/.ssh/authorized_keys
+# chmod 0600 /home/alma/.ssh/authorized_keys
 #
 #### fix up selinux context
-# restorecon -R /home/rocky/.ssh/
+# restorecon -R /home/alma/.ssh/
 
 %end
 
