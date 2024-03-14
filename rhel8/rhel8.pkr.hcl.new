@@ -39,16 +39,20 @@ locals {
 # <<<
 
 source "qemu" "rhel8" {
-  boot_command     = ["<up><tab> ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
-  boot_wait        = "3s"
-  communicator     = "none"
+# (A) move the standard parameters to the top
+  accelerator      = "kvm"
+  memory           = 2048
   disk_size        = "4G"
   headless         = true
-  iso_checksum     = "none"
   iso_url          = var.rhel8_iso_path
-  memory           = 2048
-  qemuargs         = [["-serial", "stdio"], ["-cpu", "host"]]
-  shutdown_timeout = "1h"
+  iso_checksum     = "none"
+# (B) force text mode
+##  boot_command     = ["<up><tab> ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
+  boot_command     = ["<up><tab> ", "inst.text ", "inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rhel8.ks ", "console=ttyS0 inst.cmdline", "<enter>"]
+# (C) increase wait timeout
+##  boot_wait        = "3s"
+  boot_wait        = "20s"
+  communicator     = "none"
 # (2) >>> switching from 'http_directory' to directly setting 'http_content' using the variables set earlier
 # ## http_directory   = "http"
   http_content = {
@@ -63,6 +67,22 @@ source "qemu" "rhel8" {
       }
     )
   }
+
+# (D) moving qemu arguments to the end of the subsection and adding view options
+##  qemuargs         = [["-serial", "stdio"], ["-cpu", "host"]]
+  qemuargs         = [["-serial", "telnet:localhost:4321,server,nowait"],
+                      ["-cpu", "host"],
+                      ["-nographic"],
+                      ["-monitor", "telnet:localhost:4322,server,nowait"],
+# // nb: this would work with inst.sshd
+##                      ["-nic", "user,hostfwd=tcp::2222-:22"]
+                     ]
+
+# (E) optionally freeze the vnc port so we can quickly connect to the viewer by a single command
+#  vnc_port_min = 5908
+#  vnc_port_max = 5908
+  
+  shutdown_timeout = "1h"
 
 }
 
